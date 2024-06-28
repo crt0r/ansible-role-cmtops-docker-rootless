@@ -1,0 +1,5 @@
+- name: Install Docker
+  hosts: all
+  roles:
+  - role: cmtops.docker_install
+  - role: cmtops.docker_rootless

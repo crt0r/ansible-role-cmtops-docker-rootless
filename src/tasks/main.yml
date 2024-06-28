@@ -1,0 +1,70 @@
+- name: Fail If System Not Supported
+  when: ansible_distribution != 'Ubuntu'
+  ansible.builtin.fail:
+    msg: Only Ubuntu is supported as of now.
+
+- name: Create User for Rootless
+  become: true
+  ansible.builtin.user:
+    name: '{{ rootless_user }}'
+    shell: /usr/sbin/nologin
+
+- name: Create Rootless Group
+  become: true
+  ansible.builtin.group:
+    name: rootlesskit
+
+- name: Enable Rootless User Lingering
+  become: true
+  ansible.builtin.command:
+    cmd: loginctl enable-linger {{ rootless_user }}
+    creates: /var/lib/systemd/linger/{{ rootless_user }}
+
+- name: Install Rootless Daemon
+  become: true
+  ansible.builtin.command:
+    cmd: machinectl shell {{ rootless_user }}@ /bin/bash -c 'dockerd-rootless-setuptool.sh install'
+    creates: /home/{{ rootless_user }}/.config/systemd/user/docker.service
+
+- name: Create Tmpdir Template for Rootless Socket Dir
+  become: true
+  ansible.builtin.copy:
+    dest: /usr/lib/tmpfiles.d/rootless.conf
+    content: |
+      D /run/rootlesskit 1700 {{ rootless_user }} {{ rootless_user }} - - -
+      a+ /run/rootlesskit - - - - g:rootlesskit:r-x,default:g:rootlesskit:rw-
+    mode: '0644'
+  notify:
+  - 'cmtops.docker_rootless : Reboot Server'
+
+- name: Ensure Docker Rootless Config Dir Present
+  become: true
+  ansible.builtin.file:
+    path: /home/{{ rootless_user }}/.config/docker
+    state: directory
+    owner: '{{ rootless_user }}'
+    group: '{{ rootless_user }}'
+    mode: '0755'
+
+- name: Ensure Docker Rootless Service Override Dir Exists
+  become: true
+  ansible.builtin.file:
+    state: directory
+    path: /home/{{ rootless_user }}/.config/systemd/user/docker.service.d
+    owner: '{{ rootless_user }}'
+    group: '{{ rootless_user }}'
+    mode: '0755'
+
+- name: Override Rootless Docker Socket Config
+  become: true
+  ansible.builtin.copy:
+    dest: /home/{{ rootless_user }}/.config/systemd/user/docker.service.d/override.conf
+    content: |
+      [Service]
+      ExecStart=
+      ExecStart=/usr/bin/dockerd-rootless.sh -H unix:///run/rootlesskit/docker.socket
+    owner: '{{ rootless_user }}'
+    group: '{{ rootless_user }}'
+    mode: '0644'
+  notify:
+  - 'cmtops.docker_rootless : Restart Rootless Docker on Reconfig'
