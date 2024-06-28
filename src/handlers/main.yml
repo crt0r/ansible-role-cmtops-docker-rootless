@@ -9,5 +9,5 @@
   when: reboot is undefined or not reboot.changed
   changed_when: true
   ansible.builtin.command:
-    cmd: machinectl shell cr@ /bin/bash -c 'systemctl --user restart docker'
+    cmd: machinectl shell {{ rootless_user }}@ /bin/bash -c 'systemctl --user restart docker'
   listen: 'cmtops.docker_rootless : Restart Rootless Docker on Reconfig'
