@@ -1,4 +1,6 @@
 # Install Docker on Linux Hosts Effortlessly
 
-> [NOTE]
-> This project is work in progress. Documentation and support for more systems will be added later.
+> [!WARNING]
+> This draft version will no longer be maintained. I'm starting to take Ansible roles development more seriously.
+>
+> New content will be @ [github.com/cmtopsdev](https://github.com/cmtopsdev). Stay tuned.
